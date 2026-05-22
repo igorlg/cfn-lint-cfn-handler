@@ -61,6 +61,7 @@ Changelog = "https://github.com/igorlg/cfn-lint-cfn-handler/blob/main/CHANGELOG.
 test = [
     "pytest>=8",
     "pytest-cov>=5",
+    "pytest-watcher>=0.4",
 ]
 lint = [
     "ruff>=0.7",
