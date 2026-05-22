@@ -1,0 +1,32 @@
+name: secure-workflows
+
+# Enforce SHA-pinning of every third-party action. Tag-pinning leaves us
+# vulnerable to upstream tag-rewrite attacks; SHA-pinning is the only way
+# to make the build reproducible and the supply chain auditable.
+#
+# This workflow fails the PR if any action under .github/workflows/ uses a
+# tag or branch instead of a commit SHA. PR-only — there is no value in
+# re-running this on the merge commit; if a tag-pinned action got past PR
+# review (admin bypass), `main`-side enforcement is still too late.
+#
+# Runs on EVERY PR (no paths filter), even those that don't touch
+# .github/workflows/**, because branch protection requires the
+# `ensure SHA-pinned actions` check and a path-filtered workflow that
+# doesn't trigger leaves the required check in "Expected" state forever
+# (blocking unrelated PRs from merging). The cost is ~5 seconds per PR.
+
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+jobs:
+  ensure-sha-pinned:
+    name: ensure SHA-pinned actions
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - uses: zgosalvez/github-actions-ensure-sha-pinned-actions@ca46236c6ce584ae24bc6283ba8dcf4b3ec8a066 # v5.0.4
