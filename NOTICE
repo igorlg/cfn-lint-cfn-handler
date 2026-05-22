@@ -1,0 +1,9 @@
+cfn-lint-cfn-handler
+Copyright 2026 Igor Lopes Gomes.
+
+This product is a cfn-lint plugin that adds rules specific to projects using
+the `cfn-handler` Python library (https://github.com/igorlg/cfn-handler) for
+CloudFormation Custom Resource handlers.
+
+This product is licensed under the Apache License, Version 2.0. See the
+LICENSE file for the full license text.
