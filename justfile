@@ -16,9 +16,9 @@ test:
 test-cov:
     uv run pytest --cov --cov-report=term-missing --cov-report=html
 
-# Watch tests (re-run on file change). Requires pytest-watcher; install via `uv add --group test pytest-watcher` if not already.
+# Watch tests (re-run on file change). Uses pytest-watcher's `ptw` runner.
 test-watch:
-    uv run pytest --looponfail
+    uv run ptw .
 
 # ---- Lint + type-check ----------------------------------------------------
 
