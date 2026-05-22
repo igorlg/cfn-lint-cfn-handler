@@ -1,0 +1,96 @@
+{
+  description = "cfn-lint-cfn-handler — cfn-lint rules for projects using cfn-handler custom resources";
+
+  inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs/nixos-unstable";
+  };
+
+  outputs =
+    { nixpkgs, ... }:
+    let
+      systems = [
+        "aarch64-darwin"
+        "x86_64-darwin"
+        "aarch64-linux"
+        "x86_64-linux"
+      ];
+      forAllSystems = nixpkgs.lib.genAttrs systems;
+
+      # Default dev shell for cfn-lint-cfn-handler contributors.
+      #
+      # Provides the system-level tooling needed to develop, test, lint,
+      # build, and release the plugin. Python itself is managed by `uv`;
+      # we only ship a system Python so uv has something to detect on the
+      # PATH (uv will transparently download its own interpreters when
+      # needed).
+      #
+      # Enter the shell with:
+      #   nix develop
+      # Or, with direnv (a `.envrc` containing `use flake` is committed):
+      #   direnv allow
+      #
+      # Then:
+      #   uv sync --all-groups
+      #   just test
+      mkDevShell =
+        system:
+        let
+          pkgs = nixpkgs.legacyPackages.${system};
+        in
+        pkgs.mkShellNoCC {
+          name = "cfn-lint-cfn-handler-dev";
+
+          packages = with pkgs; [
+            # Python ecosystem
+            uv
+            python312          # baseline for type-checking; uv handles 3.10–3.14 matrix.
+
+            # Task runner
+            just
+
+            # Python linters/typecheckers (ruff, mypy, pyright, cfn-lint)
+            # are managed via the `lint` dependency-group in pyproject.toml
+            # so they are version-pinned via uv.lock for both Nix and
+            # non-Nix users.
+
+            # GitHub tooling
+            gh
+
+            # Local CI (matches `just test-matrix`)
+            act
+
+            # Container runtime needed by act on Linux. macOS contributors
+            # already have Docker Desktop or OrbStack installed; on Linux
+            # the `docker` package + `dockerd` running is required.
+            # docker  # uncomment if your host is NixOS without docker installed
+
+            # Utilities
+            jq
+            nodejs_20          # required by act for JS-action steps
+          ];
+
+          shellHook = ''
+            echo ""
+            echo "  cfn-lint-cfn-handler dev shell"
+            echo "  ────────────────────────────────────────"
+            echo "  uv:        $(uv --version)"
+            echo "  just:      $(just --version)"
+            echo "  python:    $(python3 --version)"
+            echo "  gh:        $(gh --version | head -1)"
+            echo "  act:       $(act --version 2>/dev/null | head -1 || echo not found)"
+            echo ""
+            echo "  Python tools (ruff, mypy, pyright, cfn-lint) come from uv:"
+            echo "    uv sync --all-groups"
+            echo ""
+            echo "  Quickstart:  uv sync --all-groups && just test"
+            echo "  Recipes:     just --list"
+            echo ""
+          '';
+        };
+    in
+    {
+      devShells = forAllSystems (system: {
+        default = mkDevShell system;
+      });
+    };
+}
