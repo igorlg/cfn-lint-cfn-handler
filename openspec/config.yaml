@@ -1,0 +1,76 @@
+schema: spec-driven
+
+context: |
+  Project: cfn-lint-cfn-handler
+  Purpose: cfn-lint rule plugin for projects using the cfn-handler library
+           for CloudFormation Custom Resource handlers
+  License: Apache-2.0
+  Companion to: igorlg/cfn-handler (also Apache-2.0)
+  Repo: https://github.com/igorlg/cfn-lint-cfn-handler
+
+  Tech stack:
+  - Python >=3.10, packaged with hatchling (PEP 621)
+  - uv for environment + lockfile management
+  - pytest for testing (target: 95% line + branch coverage)
+  - ruff for lint + format (line-length 120)
+  - mypy strict + pyright strict (dual type-checker)
+  - just for task runner
+  - Nix flake (flake-parts) for reproducible dev shell
+  - GitHub Actions for CI; release-please + PyPI Trusted Publishing for releases
+  - Runtime dep: cfn-lint >=1.43
+
+  Plugin loading model (verified against cfn-lint v1+ source):
+  - cfn-lint v1+ has NO entry-point plugin discovery.
+  - Users opt in via:
+      cfn-lint template.yaml -a cfn_lint_cfn_handler.rules
+    or .cfnlintrc:
+      append_rules: [cfn_lint_cfn_handler.rules]
+  - cfn-lint walks the module via inspect.getmembers, finds
+    CloudFormationLintRule subclasses, instantiates them. Therefore
+    rules/__init__.py must re-export every rule class as a module attr.
+  - Test harness: cfnlint.core.get_rules(["cfn_lint_cfn_handler.rules"], [], [])
+    + cfnlint.core.run_checks(filename, template, rules, regions). Same
+    pattern as cfn-lint-serverless (the AWS Labs reference plugin).
+
+  Conventions:
+  - src/ layout: src/cfn_lint_cfn_handler/
+  - py.typed marker; inline types only (no .pyi stubs)
+  - Privacy via folder placement (_internal/), not _module.py prefix
+  - Public API: minimal __all__ in __init__.py; everything else internal
+  - Rule IDs: 9100+ inside the 9000-9999 community range; first letter
+    encodes severity (E/W/I) — no separate config
+  - Conventional Commits with scopes (feat(rule):/fix(rule):/...);
+    release-please drives SemVer
+  - Branch-per-PR; squash-merge for release-note hygiene
+  - All third-party GH Actions SHA-pinned (enforced via secure-workflows.yml)
+  - Per-job least-privilege permissions in workflows
+
+  Style preferences (from author):
+  - CLEAN, functional patterns; explicit over clever
+  - Rust-influenced error handling (explicit error paths, Result/Option-style)
+  - Readability over performance unless profiled
+  - No trivial dependencies; ecosystem conventions but pragmatic
+  - TDD: tests first, fail, then implement
+  - For each rule: two fixture templates (triggers / does not trigger)
+  - Detailed explanations with rationale in comments and commit messages
+
+rules:
+  proposal:
+    - State why this rule (or change) exists in user terms first.
+    - List non-goals explicitly. Out of scope: anything cfn-lint already
+      lints (template syntax, IAM, generic resource validation).
+    - Cross-reference upstream cfn-handler issues / docs by URL when the
+      rule encodes an invariant from the runtime library.
+  design:
+    - Name every public surface and document its contract (rule id,
+      shortdesc, description, source_url, tags, default severity).
+    - Document trade-offs with at least one rejected alternative
+      (e.g. "match by ARN regex vs match by Layers ref resolution").
+    - For rules that fetch external data (W9105 layer-arns.json), spell
+      out the cache strategy and offline behaviour.
+  tasks:
+    - Each task must be independently verifiable (a command can prove it done).
+    - Order tasks so each step leaves the repo in a green state when feasible.
+    - Group tasks by phase; phase headings match the PRD plan structure.
+    - Every rule ships with two fixture templates and tests asserting the
+      rule fires (positive) and does not fire (negative).
