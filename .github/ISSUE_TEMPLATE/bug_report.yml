@@ -1,0 +1,71 @@
+name: Bug report
+description: Report a defect in cfn-lint-cfn-handler
+title: 'Bug: '
+labels: [bug, triage]
+body:
+  - type: markdown
+    attributes:
+      value: |
+        Thanks for taking the time to file a bug report!
+        Please fill out as much of the form below as you can.
+  - type: textarea
+    id: expected
+    attributes:
+      label: Expected behaviour
+      description: What did you expect to happen? Which rule should (or should not) have fired?
+    validations:
+      required: true
+  - type: textarea
+    id: actual
+    attributes:
+      label: Actual behaviour
+      description: What actually happened? Include cfn-lint output verbatim.
+    validations:
+      required: true
+  - type: textarea
+    id: template
+    attributes:
+      label: Minimal CloudFormation template
+      description: A minimal CFN template that reproduces the issue.
+      render: yaml
+    validations:
+      required: true
+  - type: input
+    id: rule-id
+    attributes:
+      label: Rule ID(s) involved
+      placeholder: 'e.g. E9101, W9105'
+    validations:
+      required: false
+  - type: input
+    id: cfn-lint-cfn-handler-version
+    attributes:
+      label: cfn-lint-cfn-handler version
+      placeholder: 'e.g. 0.1.0'
+    validations:
+      required: true
+  - type: input
+    id: cfn-lint-version
+    attributes:
+      label: cfn-lint version
+      placeholder: 'e.g. 1.51.1'
+    validations:
+      required: true
+  - type: dropdown
+    id: python-version
+    attributes:
+      label: Python version
+      options:
+        - '3.10'
+        - '3.11'
+        - '3.12'
+        - '3.13'
+        - '3.14'
+        - 'other (specify in repro)'
+    validations:
+      required: true
+  - type: textarea
+    id: extra
+    attributes:
+      label: Anything else?
+      description: Logs, screenshots, .cfnlintrc, related issues, ...
