@@ -1,0 +1,136 @@
+name: release
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+jobs:
+  release-please:
+    name: release-please bot
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write       # create tags + GH releases
+      pull-requests: write  # open / update the release PR
+    outputs:
+      release_created: ${{ steps.release.outputs.release_created }}
+      tag_name: ${{ steps.release.outputs.tag_name }}
+    steps:
+      # Mint a short-lived installation token from the dedicated GitHub App.
+      # Why: workflow runs created via the default GITHUB_TOKEN are
+      # deliberately blocked by GitHub from triggering downstream workflow
+      # runs (anti-recursion). That meant release-please's release PRs
+      # never had `pull_request` checks run against them, blocking merges
+      # behind required status checks. Using a GitHub App's installation
+      # token sidesteps the recursion-guard: PRs opened by the App
+      # trigger workflows normally.
+      #
+      # The token is scoped to this repository, expires in ~1 hour, and
+      # is fresh on every workflow run (no long-lived secret stored). The
+      # App's private key is the only credential at rest.
+      #
+      # Same App as the cfn-handler repo — install on this repo and set
+      # RELEASE_PLEASE_APP_ID (vars) + RELEASE_PLEASE_PRIVATE_KEY (secrets)
+      # per-repo (org-less accounts cannot share secrets across repos).
+      - name: Mint App installation token
+        id: app-token
+        uses: actions/create-github-app-token@bcd2ba49218906704ab6c1aa796996da409d3eb1 # v3.2.0
+        with:
+          app-id: ${{ vars.RELEASE_PLEASE_APP_ID }}
+          private-key: ${{ secrets.RELEASE_PLEASE_PRIVATE_KEY }}
+
+      - uses: googleapis/release-please-action@5c625bfb5d1ff62eadeeb3772007f7f66fdcf071 # v4
+        id: release
+        with:
+          config-file: release-please-config.json
+          manifest-file: .release-please-manifest.json
+          token: ${{ steps.app-token.outputs.token }}
+
+  # Build the wheel + sdist exactly once and share via a workflow artifact.
+  # Two downstream jobs consume it (publish-artifacts, publish-pypi).
+  # Building once means:
+  #   * the wheel uploaded to PyPI is byte-identical to the wheel attached
+  #     to the GitHub Release — no "should be deterministic" hand-wave;
+  #   * one setup-uv invocation, not two, so the matrix doesn't race for
+  #     the same uv-cache key.
+  build-artifacts:
+    name: build wheel + sdist
+    needs: release-please
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+        with:
+          ref: ${{ needs.release-please.outputs.tag_name }}
+          persist-credentials: false
+
+      - name: Install uv with Python 3.12
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.12'
+          enable-cache: true
+
+      - name: Build wheel + sdist
+        run: uv build
+
+      - name: Upload dist/ as workflow artifact
+        uses: actions/upload-artifact@330a01c490aca151604b8cf639adc76d48f6c5d4 # v5.0.0
+        with:
+          name: dist
+          path: dist/
+          if-no-files-found: error
+          retention-days: 7
+
+  publish-artifacts:
+    name: attach release artifacts to GitHub Release
+    needs: [release-please, build-artifacts]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-24.04
+    permissions:
+      contents: write
+    steps:
+      - name: Download dist/ from build-artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: dist
+          path: dist/
+
+      - name: Upload artifacts to GitHub Release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+        run: |
+          gh release upload "${{ needs.release-please.outputs.tag_name }}" dist/* \
+            --repo "${{ github.repository }}" \
+            --clobber
+
+  publish-pypi:
+    name: publish to PyPI
+    needs: [release-please, build-artifacts]
+    if: ${{ needs.release-please.outputs.release_created == 'true' }}
+    runs-on: ubuntu-24.04
+    # PyPI Trusted Publishing — see .github/CONTRIBUTING.md for one-time setup.
+    # The Trusted Publisher must be configured at:
+    #   https://pypi.org/manage/account/publishing/
+    # with: project=cfn-lint-cfn-handler, owner=igorlg,
+    #       repo=cfn-lint-cfn-handler, workflow=release.yml, environment=pypi.
+    # First release MUST use the "pending publisher" flow because the
+    # project does not exist on PyPI yet — register the publisher BEFORE
+    # the project, not after.
+    environment:
+      name: pypi
+      url: https://pypi.org/p/cfn-lint-cfn-handler
+    permissions:
+      id-token: write   # OIDC for trusted publishing
+      contents: read
+    steps:
+      - name: Download dist/ from build-artifacts
+        uses: actions/download-artifact@018cc2cf5baa6db3ef3c5f8a56943fffe632ef53 # v6.0.0
+        with:
+          name: dist
+          path: dist/
+
+      - name: Publish to PyPI (Trusted Publisher / OIDC)
+        uses: pypa/gh-action-pypi-publish@cef221092ed1bacb1cc03d23a2d87d1d172e277b # v1.14.0

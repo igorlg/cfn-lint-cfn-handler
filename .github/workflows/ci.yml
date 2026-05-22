@@ -1,0 +1,137 @@
+name: CI
+
+# PR-only gating model. Branch protection on `main` requires `CI passed`
+# to succeed before a merge, so re-running CI on the merge commit is
+# redundant.
+on:
+  pull_request:
+    branches: [main]
+
+permissions:
+  contents: read
+
+# Cancel superseded PR runs to save CI minutes.
+concurrency:
+  group: ci-${{ github.ref }}
+  cancel-in-progress: true
+
+env:
+  # Cache and venv may live on different filesystems under `act`; copying
+  # silences the noisy hardlink warning and is fine for our small dep set.
+  UV_LINK_MODE: copy
+
+jobs:
+  test:
+    name: test (py${{ matrix.python }})
+    runs-on: ubuntu-24.04
+    strategy:
+      fail-fast: false
+      matrix:
+        # Single-arch matrix: this plugin has zero arch-sensitive code.
+        # If a rule ever needs to call into compiled deps we'll add arm64
+        # back; until then the AMD64 lane is the entire surface area.
+        python: ['3.10', '3.11', '3.12', '3.13', '3.14']
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      # Workaround: under `act`, JS-action post steps run via `docker exec`
+      # with a stripped PATH that doesn't include the acttoolcache dir where
+      # Node lives. Real GH-hosted runners are unaffected.
+      - name: act compat — expose node on standard PATH
+        if: env.ACT == 'true'
+        run: |
+          set -eu
+          NODE_BIN=$(find /opt/acttoolcache/node -name node -type f -executable 2>/dev/null | head -1)
+          if [ -n "$NODE_BIN" ] && [ ! -e /usr/local/bin/node ]; then
+            ln -sf "$NODE_BIN" /usr/local/bin/node
+          fi
+          node --version
+
+      - name: Install uv with Python ${{ matrix.python }}
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: ${{ matrix.python }}
+          enable-cache: true
+          # Distinct cache slot per-job: lint and test/py3.12 would otherwise
+          # compute the same key (same OS + Python + lockfile) and race.
+          cache-suffix: test
+
+      - name: Install dependencies
+        # `--locked` validates that pyproject.toml and uv.lock agree before
+        # installing. Catches a contributor forgetting to run `uv lock`
+        # after editing deps.
+        run: uv sync --locked --only-group test
+
+      - name: Run tests with coverage
+        run: uv run pytest --cov --cov-report=xml --cov-report=term
+
+      - name: Upload coverage to Codecov
+        if: matrix.python == '3.12'
+        uses: codecov/codecov-action@e79a6962e0d4c0c17b229090214935d2e33f8354 # v6.0.1
+        with:
+          files: ./coverage.xml
+          fail_ci_if_error: false
+        env:
+          CODECOV_TOKEN: ${{ secrets.CODECOV_TOKEN }}
+
+  lint:
+    name: lint + typecheck
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: act compat — expose node on standard PATH
+        if: env.ACT == 'true'
+        run: |
+          set -eu
+          NODE_BIN=$(find /opt/acttoolcache/node -name node -type f -executable 2>/dev/null | head -1)
+          if [ -n "$NODE_BIN" ] && [ ! -e /usr/local/bin/node ]; then
+            ln -sf "$NODE_BIN" /usr/local/bin/node
+          fi
+          node --version
+
+      - name: Install uv with Python 3.12
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.12'
+          enable-cache: true
+          cache-suffix: lint
+
+      - name: Install lint dependencies
+        run: uv sync --locked --only-group lint
+
+      - name: Ruff check
+        run: uv run ruff check src tests
+
+      - name: Ruff format --check
+        run: uv run ruff format src tests --check
+
+      - name: mypy strict
+        run: uv run mypy src/cfn_lint_cfn_handler
+
+      - name: pyright strict
+        run: uv run pyright src/cfn_lint_cfn_handler
+
+  # Sentinel aggregator: one required status check that succeeds only when
+  # every dependent job is `success` or `skipped`. Branch protection points
+  # at `CI passed` (this job) so adding/removing matrix entries or
+  # supplementary jobs does not require updating the protection JSON.
+  #
+  # FOOTGUN: when adding a new job to this workflow, also add it to
+  # `needs:` below — otherwise this job reports green even if the new job
+  # fails.
+  ci-pass:
+    name: CI passed
+    if: always()
+    needs: [test, lint]
+    runs-on: ubuntu-24.04
+    steps:
+      - name: All required jobs passed (or were skipped)
+        env:
+          TEST_RESULT: ${{ needs.test.result }}
+          LINT_RESULT: ${{ needs.lint.result }}
+        run: |
+          for r in "$TEST_RESULT" "$LINT_RESULT"; do
+            [[ "$r" == "success" || "$r" == "skipped" ]] || exit 1
+          done
+          echo "All CI jobs passed."
