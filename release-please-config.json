@@ -8,7 +8,14 @@
   "changelog-path": "CHANGELOG.md",
   "packages": {
     ".": {
-      "package-name": "cfn-lint-cfn-handler"
+      "package-name": "cfn-lint-cfn-handler",
+      "extra-files": [
+        {
+          "type": "toml",
+          "path": "uv.lock",
+          "jsonpath": "$.package[?(@.name.value=='cfn-lint-cfn-handler')].version"
+        }
+      ]
     }
   }
 }
