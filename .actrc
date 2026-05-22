@@ -1,0 +1,8 @@
+# act configuration: map GitHub-hosted runner labels to local Docker images.
+#
+# `catthehacker/ubuntu:act-24.04` is the medium-sized image (~1.7 GB) and
+# includes Python and standard tools — sufficient for our pure-Python
+# workflows that install their own toolchain via setup-uv.
+#
+# Per-user overrides live in `.actrc.local` (gitignored).
+-P ubuntu-24.04=catthehacker/ubuntu:act-24.04
