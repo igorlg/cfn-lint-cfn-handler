@@ -1,0 +1,194 @@
+[build-system]
+requires = ["hatchling>=1.27"]
+build-backend = "hatchling.build"
+
+[project]
+name = "cfn-lint-cfn-handler"
+version = "0.1.0"
+description = "cfn-lint rules for projects using cfn-handler custom resources"
+readme = "README.md"
+license = "Apache-2.0"
+license-files = ["LICENSE", "NOTICE"]
+requires-python = ">=3.10"
+authors = [
+    { name = "Igor Londero Gentil" },
+]
+keywords = [
+    "aws",
+    "cloudformation",
+    "cfn",
+    "cfn-lint",
+    "custom-resource",
+    "cfn-handler",
+]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: Developers",
+    "Operating System :: OS Independent",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Programming Language :: Python :: 3.14",
+    "Topic :: Software Development :: Libraries :: Python Modules",
+    "Typing :: Typed",
+]
+
+# cfn-lint IS a runtime dep here — the plugin only matters in cfn-lint's
+# context. >=1.43 is the floor cfn-lint-serverless (the AWS-Labs reference
+# plugin) ships with; below that the test-harness API surface drifts.
+dependencies = [
+    "cfn-lint>=1.43",
+]
+
+# NOTE: cfn-lint v1+ has no entry-point plugin discovery — verified against
+# cfn-lint source and the cfn-lint-serverless plugin. Users opt in via:
+#     cfn-lint -a cfn_lint_cfn_handler.rules template.yaml
+# or .cfnlintrc:
+#     append_rules:
+#       - cfn_lint_cfn_handler.rules
+# Do NOT add a `[project.entry-points."cfnlint.rules"]` block — it would be
+# a no-op and mislead future maintainers.
+
+[project.urls]
+Homepage = "https://github.com/igorlg/cfn-lint-cfn-handler"
+Repository = "https://github.com/igorlg/cfn-lint-cfn-handler"
+Issues = "https://github.com/igorlg/cfn-lint-cfn-handler/issues"
+Changelog = "https://github.com/igorlg/cfn-lint-cfn-handler/blob/main/CHANGELOG.md"
+
+[dependency-groups]
+test = [
+    "pytest>=8",
+    "pytest-cov>=5",
+]
+lint = [
+    "ruff>=0.7",
+    "mypy>=1.13",
+    "pyright>=1.1",
+]
+# `dev` is the meta-group installed by `uv sync` with no args.
+dev = [
+    { include-group = "test" },
+    { include-group = "lint" },
+]
+
+# ---- Build ----------------------------------------------------------------
+
+[tool.hatch.build.targets.wheel]
+packages = ["src/cfn_lint_cfn_handler"]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "src/cfn_lint_cfn_handler",
+    "README.md",
+    "LICENSE",
+    "NOTICE",
+    "CHANGELOG.md",
+    "pyproject.toml",
+]
+
+# ---- Linting --------------------------------------------------------------
+
+[tool.ruff]
+line-length = 120
+target-version = "py310"
+src = ["src", "tests"]
+extend-exclude = [".venv", "dist", "build", "openspec/changes/archive", "tmp"]
+
+[tool.ruff.lint]
+select = [
+    "E",    # pycodestyle errors
+    "F",    # pyflakes
+    "W",    # pycodestyle warnings
+    "I",    # isort
+    "UP",   # pyupgrade
+    "B",    # flake8-bugbear
+    "C4",   # flake8-comprehensions
+    "SIM",  # flake8-simplify
+    "RUF",  # ruff-specific
+    "PTH",  # use pathlib
+    "TID",  # tidy imports
+    "PT",   # pytest style
+    "PYI",  # typing best practices
+    "TC",   # flake8-type-checking
+    "ANN",  # flake8-annotations (require type annotations)
+    "D",    # pydocstyle (public API only)
+]
+ignore = [
+    "ANN401",  # allow `Any` where genuinely needed (CFN payload shapes)
+    "D203",    # incompatible with D211
+    "D213",    # incompatible with D212
+]
+
+[tool.ruff.lint.per-file-ignores]
+"tests/**" = ["ANN", "D", "S101", "SIM117", "TC", "PT022", "PYI034", "SIM300"]
+
+[tool.ruff.lint.pydocstyle]
+convention = "google"
+
+[tool.ruff.format]
+quote-style = "double"
+indent-style = "space"
+skip-magic-trailing-comma = false
+
+# ---- Type checking --------------------------------------------------------
+
+[tool.mypy]
+python_version = "3.10"
+files = ["src/cfn_lint_cfn_handler"]
+strict = true
+warn_unreachable = true
+warn_return_any = true
+warn_redundant_casts = true
+warn_unused_ignores = true
+disallow_untyped_decorators = true
+no_implicit_reexport = true
+extra_checks = true
+
+[[tool.mypy.overrides]]
+module = ["cfnlint.*"]
+ignore_missing_imports = true
+
+[tool.pyright]
+include = ["src/cfn_lint_cfn_handler"]
+exclude = ["**/__pycache__", ".venv", "dist", "build", "tmp"]
+pythonVersion = "3.10"
+typeCheckingMode = "strict"
+reportMissingImports = "error"
+reportMissingTypeStubs = false
+# cfn-lint ships no type stubs; treat its surface as Unknown rather than failing.
+reportUnknownMemberType = "warning"
+reportUnknownVariableType = "warning"
+
+# ---- Tests ----------------------------------------------------------------
+
+[tool.pytest.ini_options]
+minversion = "8.0"
+addopts = "-ra --strict-markers --strict-config"
+testpaths = ["tests"]
+filterwarnings = [
+    "error",
+]
+
+# ---- Coverage -------------------------------------------------------------
+
+[tool.coverage.run]
+branch = true
+source = ["src/cfn_lint_cfn_handler"]
+parallel = true
+
+[tool.coverage.report]
+fail_under = 95
+show_missing = true
+skip_covered = false
+exclude_lines = [
+    "pragma: no cover",
+    "if TYPE_CHECKING:",
+    "raise NotImplementedError",
+    "@overload",
+    "@abstractmethod",
+]
+
+[tool.coverage.html]
+directory = "htmlcov"
