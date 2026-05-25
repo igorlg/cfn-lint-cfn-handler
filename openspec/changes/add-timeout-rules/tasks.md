@@ -4,66 +4,66 @@
 
 ### E9101
 
-- [ ] 1.1 `tests/fixtures/templates/e9101_triggers.yaml` — one
+- [x] 1.1 `tests/fixtures/templates/e9101_triggers.yaml` — one
   `AWS::CloudFormation::CustomResource` whose `ServiceToken` is
   `!GetAtt MyHandler.Arn`, where `MyHandler` is an
   `AWS::Lambda::Function` with `Timeout: 10`. Minimal IAM
   (`AWS::IAM::Role` with Lambda assume-role).
-- [ ] 1.2 `e9101_does_not_trigger.yaml` — same, `Timeout: 300`.
-- [ ] 1.3 `e9101_no_timeout.yaml` — Timeout property omitted (CFN
+- [x] 1.2 `e9101_does_not_trigger.yaml` — same, `Timeout: 300`.
+- [x] 1.3 `e9101_no_timeout.yaml` — Timeout property omitted (CFN
   default 3s applies; should fire).
-- [ ] 1.4 `e9101_external_servicetoken.yaml` — `ServiceToken` is a
+- [x] 1.4 `e9101_external_servicetoken.yaml` — `ServiceToken` is a
   literal ARN string; no Lambda in the template.
-- [ ] 1.5 `e9101_custom_typename.yaml` — `Type: Custom::MyResource`
+- [x] 1.5 `e9101_custom_typename.yaml` — `Type: Custom::MyResource`
   (alias form).
-- [ ] 1.6 `e9101_unresolvable_timeout.yaml` — Lambda
+- [x] 1.6 `e9101_unresolvable_timeout.yaml` — Lambda
   `Timeout: !Ref TimeoutParam`. Should not fire.
-- [ ] 1.7 `e9101_sam_function.yaml` — uses `AWS::Serverless::Function`
+- [x] 1.7 `e9101_sam_function.yaml` — uses `AWS::Serverless::Function`
   + `Transform: AWS::Serverless-2016-10-31`. Timeout=10. Should fire
   (cfn-lint's SAM transform expands to AWS::Lambda::Function before
   rules run).
 
 ### E9106
 
-- [ ] 1.8 `e9106_triggers.yaml` — Lambda `Timeout: 600`,
+- [x] 1.8 `e9106_triggers.yaml` — Lambda `Timeout: 600`,
   `ServiceTimeout: 300`. E9106 fires; E9101 does not (Timeout > 30).
-- [ ] 1.9 `e9106_does_not_trigger.yaml` — Lambda `Timeout: 300`,
+- [x] 1.9 `e9106_does_not_trigger.yaml` — Lambda `Timeout: 300`,
   `ServiceTimeout: 600`. Neither rule fires.
-- [ ] 1.10 `e9106_equal.yaml` — Lambda `Timeout: 300`,
+- [x] 1.10 `e9106_equal.yaml` — Lambda `Timeout: 300`,
   `ServiceTimeout: 300`. Boundary case; equal values do not fire
   (the contradiction is "strictly greater").
 
 ### E9108
 
-- [ ] 1.11 `e9108_triggers_absent.yaml` — `ServiceTimeout` property
+- [x] 1.11 `e9108_triggers_absent.yaml` — `ServiceTimeout` property
   omitted entirely; Lambda has `Timeout: 300`. E9108 fires (absent →
   default 3600 > 900); E9101 does not.
-- [ ] 1.12 `e9108_triggers_too_high.yaml` — `ServiceTimeout: 1800`;
+- [x] 1.12 `e9108_triggers_too_high.yaml` — `ServiceTimeout: 1800`;
   Lambda `Timeout: 600`. E9108 fires.
-- [ ] 1.13 `e9108_does_not_trigger.yaml` — `ServiceTimeout: 600`;
+- [x] 1.13 `e9108_does_not_trigger.yaml` — `ServiceTimeout: 600`;
   Lambda `Timeout: 300`.
-- [ ] 1.14 `e9108_polling_marker.yaml` — `ServiceTimeout: 3000`;
+- [x] 1.14 `e9108_polling_marker.yaml` — `ServiceTimeout: 3000`;
   Lambda `Timeout: 600`; resource has
   `Metadata.cfn-lint.config.configure_rules.E9108.polling = true`.
   E9108 does not fire for that resource.
-- [ ] 1.15 `e9108_polling_marker_template_level.yaml` — two custom
+- [x] 1.15 `e9108_polling_marker_template_level.yaml` — two custom
   resources with `ServiceTimeout: 1800` each; template-level
   `Metadata.cfn-lint.config.configure_rules.E9108.polling_resources:
   [Resource1, Resource2]`. E9108 does not fire for either.
-- [ ] 1.16 `e9108_polling_marker_partial.yaml` — two custom resources
+- [x] 1.16 `e9108_polling_marker_partial.yaml` — two custom resources
   with `ServiceTimeout: 1800`; only one has the per-resource marker.
   E9108 fires for the un-marked one only.
 
 ### Sanity
 
-- [ ] 1.17 Run `uv run --with cfn-lint cfn-lint <fixture>` (no `-a`)
+- [x] 1.17 Run `uv run --with cfn-lint cfn-lint <fixture>` (no `-a`)
   on each fixture and verify only expected base-cfn-lint findings
   appear. Catches typos before they show up as E91xx test failures.
 
 ## 2. Test harness wiring
 
-- [ ] 2.1 Create `tests/rules/__init__.py` (empty).
-- [ ] 2.2 Create `tests/rules/test_lambda_timeout.py`. One test
+- [x] 2.1 Create `tests/rules/__init__.py` (empty).
+- [x] 2.2 Create `tests/rules/test_lambda_timeout.py`. One test
   function per fixture. Pattern (mirrors cfn-lint-serverless):
   ```python
   from pathlib import Path
@@ -75,17 +75,9 @@
   def _matches_for(rules, name):
       template, _ = load_yaml(str(FIXTURES / name))
       return run_checks(str(FIXTURES / name), template, rules, ["us-east-1"])
-
-  def test_e9101_fires_on_timeout_below_30(rules):
-      matches = _matches_for(rules, "e9101_triggers.yaml")
-      assert any(m.rule.id == "E9101" for m in matches)
-
-  def test_e9101_does_not_fire_on_safe_timeout(rules):
-      matches = _matches_for(rules, "e9101_does_not_trigger.yaml")
-      assert not any(m.rule.id == "E9101" for m in matches)
   ```
   One test per fixture; explicit assertion of E91xx presence/absence.
-- [ ] 2.3 Run `uv run pytest tests/rules/test_lambda_timeout.py`. All
+- [x] 2.3 Run `uv run pytest tests/rules/test_lambda_timeout.py`. All
   tests MUST fail at this point — no rules registered yet. Confirms
   harness is wired correctly (failing for the right reason).
 
@@ -93,7 +85,7 @@
 
 ### Shared helpers
 
-- [ ] 3.1 In `src/cfn_lint_cfn_handler/rules/lambda_timeout.py`, add
+- [x] 3.1 In `src/cfn_lint_cfn_handler/rules/lambda_timeout.py`, add
   module-level helpers (private, snake_case, leading underscore):
   - `_iter_custom_resources(cfn)` → iterates resources whose Type is
     `AWS::CloudFormation::CustomResource` or `Custom::*`.
@@ -111,26 +103,26 @@
 
 ### E9101
 
-- [ ] 3.2 Add `LambdaTimeoutRule` class with the algorithm: iterate
+- [x] 3.2 Add `LambdaTimeoutRule` class with the algorithm: iterate
   custom resources, resolve to Lambda, read Timeout, fire on
   `Timeout < 30` (treating `None`-from-absent as 3, firing). Skip
   silently on unresolvable Timeout intrinsics.
-- [ ] 3.3 Re-export from `rules/__init__.py`'s `__all__`.
-- [ ] 3.4 Run E9101 tests; all pass.
+- [x] 3.3 Re-export from `rules/__init__.py`'s `__all__`.
+- [x] 3.4 Run E9101 tests; all pass.
 
 ### E9106
 
-- [ ] 3.5 Add `LambdaTimeoutExceedsServiceTimeoutRule` class. Iterate
+- [x] 3.5 Add `LambdaTimeoutExceedsServiceTimeoutRule` class. Iterate
   custom resources, resolve Lambda, read both Timeout and
   ServiceTimeout. Fire on `lambda_timeout > service_timeout` only
   when both values are concrete integers; skip silently when either
   is `None`.
-- [ ] 3.6 Re-export.
-- [ ] 3.7 Run E9106 tests; all pass.
+- [x] 3.6 Re-export.
+- [x] 3.7 Run E9106 tests; all pass.
 
 ### E9108
 
-- [ ] 3.8 Add `ServiceTimeoutCeilingRule` class. Iterate custom
+- [x] 3.8 Add `ServiceTimeoutCeilingRule` class. Iterate custom
   resources, read ServiceTimeout. Fire on:
   - ServiceTimeout absent (defaulting to 3600 > 900), OR
   - ServiceTimeout > 900 as a concrete integer.
@@ -144,62 +136,62 @@
     if it contains the resource's logical ID, suppress.
   Use cfn-lint's standard config-resolution helpers if available;
   otherwise read the Metadata structure directly.
-- [ ] 3.9 Re-export.
-- [ ] 3.10 Run E9108 tests; all pass (including the two opt-in
+- [x] 3.9 Re-export.
+- [x] 3.10 Run E9108 tests; all pass (including the two opt-in
   fixture tests).
 
 ## 4. Smoke clean-up
 
-- [ ] 4.1 In `tests/test_smoke.py`, delete
+- [x] 4.1 In `tests/test_smoke.py`, delete
   `test_rules_fixture_loads_empty_collection` (its zero-rules
   invariant is violated by design now).
-- [ ] 4.2 Run full `uv run pytest`. All tests pass.
+- [x] 4.2 Run full `uv run pytest`. All tests pass.
 
 ## 5. End-to-end CLI smoke
 
-- [ ] 5.1 `uv run --with cfn-lint cfn-lint tests/fixtures/templates/e9101_triggers.yaml -a cfn_lint_cfn_handler.rules`
+- [x] 5.1 `uv run --with cfn-lint cfn-lint tests/fixtures/templates/e9101_triggers.yaml -a cfn_lint_cfn_handler.rules`
   exits non-zero, emits E9101.
-- [ ] 5.2 Same for `e9106_triggers.yaml` (E9106 emitted).
-- [ ] 5.3 Same for `e9108_triggers_absent.yaml` (E9108 emitted).
-- [ ] 5.4 `cfn-lint tests/fixtures/templates/e9108_polling_marker.yaml -a cfn_lint_cfn_handler.rules`
+- [x] 5.2 Same for `e9106_triggers.yaml` (E9106 emitted).
+- [x] 5.3 Same for `e9108_triggers_absent.yaml` (E9108 emitted).
+- [x] 5.4 `cfn-lint tests/fixtures/templates/e9108_polling_marker.yaml -a cfn_lint_cfn_handler.rules`
   exits 0 (marker silences E9108).
-- [ ] 5.5 `cfn-lint tests/fixtures/templates/e9101_does_not_trigger.yaml -a cfn_lint_cfn_handler.rules`
+- [x] 5.5 `cfn-lint tests/fixtures/templates/e9101_does_not_trigger.yaml -a cfn_lint_cfn_handler.rules`
   exits 0 (no findings).
 
 ## 6. Coverage + dual typecheck
 
-- [ ] 6.1 `just test-cov` — coverage on `lambda_timeout.py` ≥ 95%
+- [x] 6.1 `just test-cov` — coverage on `lambda_timeout.py` ≥ 95%
   line + branch.
-- [ ] 6.2 `just typecheck` — mypy strict and pyright strict both
+- [x] 6.2 `just typecheck` — mypy strict and pyright strict both
   green. Type the rule classes' `match` returns as `list[RuleMatch]`.
   cfn-lint surfaces (`cfn`, `Match`) may surface as Unknown to
   pyright; warning-not-error per the existing pyright config.
 
 ## 7. Lint + format
 
-- [ ] 7.1 `just lint` — ruff clean.
-- [ ] 7.2 `just lint-fix` if anything's autofixable; re-run lint.
+- [x] 7.1 `just lint` — ruff clean.
+- [x] 7.2 `just lint-fix` if anything's autofixable; re-run lint.
 
 ## 8. Documentation
 
-- [ ] 8.1 `README.md` — update rule catalogue rows for E9101 (now
+- [x] 8.1 `README.md` — update rule catalogue rows for E9101 (now
   shipping), and add rows for E9106 + E9108. Keep `source_url`
   pointing at the bootstrap doc / AWS docs until a per-rule docs
   site exists.
-- [ ] 8.2 `README.md` — add a short "Configuring rules" section near
+- [x] 8.2 `README.md` — add a short "Configuring rules" section near
   the existing Configuration section showing:
   - `Metadata.cfn-lint.config.ignore_checks: [E9108]` (universal
     opt-out).
   - `Metadata.cfn-lint.config.configure_rules.E9108.polling: true`
     (per-resource opt-in).
   - Template-level `polling_resources: [...]` form.
-- [ ] 8.3 No AGENTS.md changes expected — the per-rule pattern this
+- [x] 8.3 No AGENTS.md changes expected — the per-rule pattern this
   PR establishes is already documented at the project level.
 
 ## 9. Validation (before push)
 
-- [ ] 9.1 `openspec validate add-timeout-rules --strict` passes.
-- [ ] 9.2 `just ci-check` passes (lint + dual typecheck + test-cov).
+- [x] 9.1 `openspec validate add-timeout-rules --strict` passes.
+- [x] 9.2 `just ci-check` passes (lint + dual typecheck + test-cov).
 - [ ] 9.3 `git log --oneline main..HEAD` shows the planned commit
   sequence. Recommended: one commit per phase, in order:
   - `test(rules): fixtures and harness for E9101/E9106/E9108`
