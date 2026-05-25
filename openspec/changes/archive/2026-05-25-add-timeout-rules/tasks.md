@@ -206,24 +206,24 @@
 
 ## 10. Open PR
 
-- [ ] 10.1 Branch name `feat/timeout-rules`.
-- [ ] 10.2 PR title:
+- [x] 10.1 Branch name `feat/timeout-rules`.
+- [x] 10.2 PR title:
   `feat(rules): E9101, E9106, E9108 — custom-resource timeout sanity`.
   The `feat:` prefix triggers a 0.1.x → 0.2.0 minor bump.
-- [ ] 10.3 PR body: link the proposal; show one cfn-lint output
+- [x] 10.3 PR body: link the proposal; show one cfn-lint output
   snippet per rule on its trigger fixture; explain the strict-first
   rationale for E9108 and the `polling: true` marker.
 
 ## 11. Post-merge
 
-- [ ] 11.1 release-please opens a `chore(main): release 0.2.0` PR.
-- [ ] 11.2 PyPI Trusted Publisher must be in place before merging
+- [x] 11.1 release-please opens a `chore(main): release 0.2.0` PR.
+- [x] 11.2 PyPI Trusted Publisher must be in place before merging
   the release PR (Igor handles in GitHub UI / PyPI account).
-- [ ] 11.3 Merge release PR → 0.2.0 ships.
+- [x] 11.3 Merge release PR → 0.2.0 ships.
 
 ## 12. Archive
 
-- [ ] 12.1 After 11.3 ships, run `openspec archive add-timeout-rules`.
+- [x] 12.1 After 11.3 ships, run `openspec archive add-timeout-rules`.
   The `cfn-handler-rules` capability spec gets created at
   `openspec/specs/cfn-handler-rules/spec.md` with all three
   Requirements merged in.
