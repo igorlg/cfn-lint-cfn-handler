@@ -112,6 +112,40 @@ jobs:
       - name: pyright strict
         run: uv run pyright src/cfn_lint_cfn_handler
 
+  # Fast-fail: verify rule classes load and their match() methods run
+  # without exception. Catches scrambled-module-state bugs (helpers
+  # accidentally nested inside another function, etc.) that pass type-check
+  # but break the plugin at runtime. Surfaces with a focused error rather
+  # than 16 random fixture-test failures.
+  verify-imports:
+    name: verify rule imports
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@de0fac2e4500dabe0009e67214ff5f5447ce83dd # v6.0.2
+
+      - name: act compat — expose node on standard PATH
+        if: env.ACT == 'true'
+        run: |
+          set -eu
+          NODE_BIN=$(find /opt/acttoolcache/node -name node -type f -executable 2>/dev/null | head -1)
+          if [ -n "$NODE_BIN" ] && [ ! -e /usr/local/bin/node ]; then
+            ln -sf "$NODE_BIN" /usr/local/bin/node
+          fi
+          node --version
+
+      - name: Install uv with Python 3.12
+        uses: astral-sh/setup-uv@08807647e7069bb48b6ef5acd8ec9567f424441b # v8.1.0
+        with:
+          python-version: '3.12'
+          enable-cache: true
+          cache-suffix: verify-imports
+
+      - name: Install test dependencies
+        run: uv sync --locked --only-group test
+
+      - name: Verify rule imports
+        run: uv run pytest tests/test_rule_module_invariants.py -v
+
   # Sentinel aggregator: one required status check that succeeds only when
   # every dependent job is `success` or `skipped`. Branch protection points
   # at `CI passed` (this job) so adding/removing matrix entries or
@@ -123,15 +157,16 @@ jobs:
   ci-pass:
     name: CI passed
     if: always()
-    needs: [test, lint]
+    needs: [test, lint, verify-imports]
     runs-on: ubuntu-24.04
     steps:
       - name: All required jobs passed (or were skipped)
         env:
           TEST_RESULT: ${{ needs.test.result }}
           LINT_RESULT: ${{ needs.lint.result }}
+          VERIFY_IMPORTS_RESULT: ${{ needs.verify-imports.result }}
         run: |
-          for r in "$TEST_RESULT" "$LINT_RESULT"; do
+          for r in "$TEST_RESULT" "$LINT_RESULT" "$VERIFY_IMPORTS_RESULT"; do
             [[ "$r" == "success" || "$r" == "skipped" ]] || exit 1
           done
           echo "All CI jobs passed."

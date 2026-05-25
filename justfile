@@ -20,6 +20,13 @@ test-cov:
 test-watch:
     uv run ptw .
 
+# Verify every rule class loads + its match() runs without exception.
+# Catches the kind of scrambled-module-state bugs that pass type-check
+# (helpers nested inside another function, etc.) but would break the
+# plugin at runtime when cfn-lint invokes match() against a real template.
+verify-imports:
+    uv run pytest tests/test_rule_module_invariants.py -v
+
 # ---- Lint + type-check ----------------------------------------------------
 
 # Ruff lint + format-check (no autofix). Same checks as CI.
