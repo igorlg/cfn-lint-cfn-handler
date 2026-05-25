@@ -1,0 +1,9 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: E9101 fixture — ServiceToken is a literal external ARN (skip silently)
+
+Resources:
+  MyCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: arn:aws:lambda:us-east-1:111122223333:function:external-handler
+      ServiceTimeout: 600

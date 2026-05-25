@@ -1,0 +1,21 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Transform: AWS::Serverless-2016-10-31
+Description: E9101 fixture — SAM AWS::Serverless::Function with low Timeout (fires after SAM transform)
+
+Resources:
+  MyHandler:
+    Type: AWS::Serverless::Function
+    Properties:
+      FunctionName: e9101-handler-sam
+      Runtime: python3.12
+      Handler: index.handler
+      Timeout: 10
+      InlineCode: |
+        def handler(event, context):
+            return {"Status": "SUCCESS"}
+
+  MyCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt MyHandler.Arn
+      ServiceTimeout: 600

@@ -1,0 +1,14 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: E9101 fixture — ServiceToken via Fn::Sub (skip silently; cannot resolve)
+
+Parameters:
+  HandlerArnSuffix:
+    Type: String
+    Default: external-handler
+
+Resources:
+  MyCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !Sub "arn:aws:lambda:${AWS::Region}:${AWS::AccountId}:function:${HandlerArnSuffix}"
+      ServiceTimeout: 600
