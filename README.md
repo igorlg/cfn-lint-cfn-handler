@@ -12,9 +12,8 @@ It catches misconfigurations specific to `cfn-handler`-based custom
 resources — the kind of issues cfn-lint cannot know about generically
 because they depend on knowing the consumer ships `cfn-handler` semantics.
 
-> **Status: pre-release scaffolding.** No rules ship yet. This README
-> describes the intended shape; rule classes are added per the bootstrap
-> sequence in `cfn-lint-plugin-bootstrap.md` §15.
+`0.x` is pre-1.0; the rule set is still expanding. See the rule
+catalogue below for what currently ships.
 
 ## Install
 
@@ -43,25 +42,81 @@ append_rules:
 
 ## Rule catalogue
 
-| ID      | Severity      | Description                                                                          |
-|---------|---------------|--------------------------------------------------------------------------------------|
-| `E9101` | Error         | Custom resource references a Lambda whose `Timeout` is < 30s (CFN response wait risk) |
-| `E9102` | Error         | Polling-using handler has CFN `TimeoutInMinutes` < a sane lower bound                |
-| `E9103` | Error         | Lambda lacks IAM permissions for `events:*` / `lambda:*Permission` when polling      |
-| `W9104` | Warning       | `ServiceToken` does not look like a Lambda Function ARN                              |
-| `W9105` | Warning       | `cfn-handler` Layer ARN doesn't match the region the stack is being deployed to      |
+| ID      | Severity      | Description                                                                                            | Status   |
+|---------|---------------|--------------------------------------------------------------------------------------------------------|----------|
+| `E9101` | Error         | Custom resource references a Lambda whose `Timeout` is < 30 s (cfn-handler safety margin)              | shipping |
+| `E9106` | Error         | Lambda `Timeout` exceeds custom resource `ServiceTimeout` — CFN gives up before Lambda finishes        | shipping |
+| `E9108` | Error         | `ServiceTimeout` absent or > 900 s (Lambda's hard ceiling). Opt out per-resource for polling handlers. | shipping |
+| `E9102` | Error         | Polling-using handler has `ServiceTimeout` below a sensible polling minimum                            | planned  |
+| `E9103` | Error         | Lambda lacks IAM permissions for `events:*` / `lambda:*Permission` when polling                        | planned  |
+| `W9104` | Warning       | `ServiceToken` does not look like a Lambda Function ARN                                                | planned  |
+| `W9105` | Warning       | `cfn-handler` Layer ARN doesn't match the region the stack is being deployed to                        | planned  |
 
 Severity is encoded by the first letter of the rule ID, per cfn-lint
 convention (`E*` → error, `W*` → warning, `I*` → informational).
 
-## Configuration
+## Configuring rules
 
-Standard cfn-lint configuration applies. To disable a rule:
+Standard cfn-lint mechanisms work as expected. Mute a rule entirely via
+`.cfnlintrc`:
 
 ```yaml
 ignore_checks:
-  - W9105
+  - E9108
 ```
+
+Or per-resource via the `Metadata` block (universal escape hatch — works
+for any rule):
+
+```yaml
+Resources:
+  MyCustomResource:
+    Type: Custom::LongRunningJob
+    Metadata:
+      cfn-lint:
+        config:
+          ignore_checks: [E9108]
+    Properties:
+      ServiceToken: !GetAtt Handler.Arn
+      ServiceTimeout: 3600
+```
+
+### E9108 polling opt-in (recommended for polling handlers)
+
+E9108 fires by default when `ServiceTimeout` is unset or above Lambda's
+900 s ceiling. For polling-based custom resource handlers (which legitimately
+need wall-clock windows beyond a single Lambda invocation), add the
+`polling: true` marker per-resource:
+
+```yaml
+Resources:
+  MyLongRunningResource:
+    Type: Custom::Provisioner
+    Metadata:
+      cfn-lint:
+        config:
+          configure_rules:
+            E9108:
+              polling: true
+    Properties:
+      ServiceToken: !GetAtt Handler.Arn
+      ServiceTimeout: 3600
+```
+
+For multiple polling resources, the template-level form is concise:
+
+```yaml
+Metadata:
+  cfn-lint:
+    config:
+      configure_rules:
+        E9108:
+          polling_resources: [MyResource1, MyResource2]
+```
+
+The `polling: true` marker conveys intent — once polling-aware detection
+lands (alongside E9102/E9103), the rule will validate the claim against
+the Lambda's IAM perms.
 
 To override a rule's severity, see cfn-lint's
 [per-rule config](https://github.com/aws-cloudformation/cfn-lint#configure-rules).
