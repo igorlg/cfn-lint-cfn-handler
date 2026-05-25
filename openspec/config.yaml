@@ -57,8 +57,7 @@ context: |
 rules:
   proposal:
     - State why this rule (or change) exists in user terms first.
-    - List non-goals explicitly. Out of scope: anything cfn-lint already
-      lints (template syntax, IAM, generic resource validation).
+    - "List non-goals explicitly. Out of scope: anything cfn-lint already lints (template syntax, IAM, generic resource validation)."
     - Cross-reference upstream cfn-handler issues / docs by URL when the
       rule encodes an invariant from the runtime library.
   design:
