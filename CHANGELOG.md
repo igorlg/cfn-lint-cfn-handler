@@ -1,5 +1,18 @@
 # Changelog
 
+## [0.2.0](https://github.com/igorlg/cfn-lint-cfn-handler/compare/v0.1.1...v0.2.0) (2026-05-25)
+
+
+### Features
+
+* **rules:** E9101, E9106, E9108 — custom-resource timeout sanity ([4b20476](https://github.com/igorlg/cfn-lint-cfn-handler/commit/4b20476adc1b49634312534492751ed4aba4a114))
+
+
+### Documentation
+
+* **openspec:** propose timeout-sanity rules (E9101, E9106, E9108) ([5294277](https://github.com/igorlg/cfn-lint-cfn-handler/commit/5294277fdd4054d9681e49575802f84d46dffbcf))
+* rule catalogue and Configuring rules section ([db90875](https://github.com/igorlg/cfn-lint-cfn-handler/commit/db908754052f013871e4600e09a2dd558694549e))
+
 ## [0.1.1](https://github.com/igorlg/cfn-lint-cfn-handler/compare/v0.1.0...v0.1.1) (2026-05-22)
 
 
