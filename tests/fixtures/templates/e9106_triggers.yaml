@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: E9106 fixture — Lambda Timeout > ServiceTimeout (fires)
+
+Resources:
+  HandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BasicExec
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  MyHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: e9106-handler
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt HandlerRole.Arn
+      Timeout: 600
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"Status": "SUCCESS"}
+
+  MyCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt MyHandler.Arn
+      ServiceTimeout: 300

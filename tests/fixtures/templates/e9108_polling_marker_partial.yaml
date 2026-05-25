@@ -1,0 +1,56 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: E9108 fixture — partial polling marker (one resource marked, one not)
+
+Resources:
+  HandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BasicExec
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  MyHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: e9108-handler-partial
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt HandlerRole.Arn
+      Timeout: 600
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"Status": "SUCCESS"}
+
+  MarkedResource:
+    Type: AWS::CloudFormation::CustomResource
+    Metadata:
+      cfn-lint:
+        config:
+          configure_rules:
+            E9108:
+              polling: true
+    Properties:
+      ServiceToken: !GetAtt MyHandler.Arn
+      ServiceTimeout: 1800
+
+  UnmarkedResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !GetAtt MyHandler.Arn
+      ServiceTimeout: 1800

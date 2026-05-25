@@ -1,0 +1,44 @@
+AWSTemplateFormatVersion: '2010-09-09'
+Description: E9101 fixture — ServiceToken via !Ref form (fires)
+
+Resources:
+  HandlerRole:
+    Type: AWS::IAM::Role
+    Properties:
+      AssumeRolePolicyDocument:
+        Version: '2012-10-17'
+        Statement:
+          - Effect: Allow
+            Principal:
+              Service: lambda.amazonaws.com
+            Action: sts:AssumeRole
+      Policies:
+        - PolicyName: BasicExec
+          PolicyDocument:
+            Version: '2012-10-17'
+            Statement:
+              - Effect: Allow
+                Action:
+                  - logs:CreateLogGroup
+                  - logs:CreateLogStream
+                  - logs:PutLogEvents
+                Resource: '*'
+
+  MyHandler:
+    Type: AWS::Lambda::Function
+    Properties:
+      FunctionName: e9101-handler-ref
+      Runtime: python3.12
+      Handler: index.handler
+      Role: !GetAtt HandlerRole.Arn
+      Timeout: 10
+      Code:
+        ZipFile: |
+          def handler(event, context):
+              return {"Status": "SUCCESS"}
+
+  MyCustomResource:
+    Type: AWS::CloudFormation::CustomResource
+    Properties:
+      ServiceToken: !Ref MyHandler
+      ServiceTimeout: 600
