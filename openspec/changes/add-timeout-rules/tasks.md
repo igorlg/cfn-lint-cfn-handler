@@ -192,7 +192,7 @@
 
 - [x] 9.1 `openspec validate add-timeout-rules --strict` passes.
 - [x] 9.2 `just ci-check` passes (lint + dual typecheck + test-cov).
-- [ ] 9.3 `git log --oneline main..HEAD` shows the planned commit
+- [x] 9.3 `git log --oneline main..HEAD` shows the planned commit
   sequence. Recommended: one commit per phase, in order:
   - `test(rules): fixtures and harness for E9101/E9106/E9108`
   - `feat(rule): E9101 — Lambda Timeout below cfn-handler safety margin`
