@@ -151,6 +151,14 @@ extra_checks = true
 module = ["cfnlint.*"]
 ignore_missing_imports = true
 
+# cfnlint surfaces resolve to Any (we don't ship type stubs for them); the
+# rule classes legitimately subclass cfn-lint's CloudFormationLintRule.
+# Relax disallow_subclassing_any inside our rules module so mypy strict
+# elsewhere is unaffected.
+[[tool.mypy.overrides]]
+module = ["cfn_lint_cfn_handler.rules.*"]
+disallow_subclassing_any = false
+
 [tool.pyright]
 include = ["src/cfn_lint_cfn_handler"]
 exclude = ["**/__pycache__", ".venv", "dist", "build", "tmp"]
@@ -161,6 +169,7 @@ reportMissingTypeStubs = false
 # cfn-lint ships no type stubs; treat its surface as Unknown rather than failing.
 reportUnknownMemberType = "warning"
 reportUnknownVariableType = "warning"
+reportUnknownArgumentType = "warning"
 
 # ---- Tests ----------------------------------------------------------------
 
